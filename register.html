@@ -91,7 +91,7 @@
       payWarn.textContent = 'No payment token found – please pay $5 first.';
       payWarn.classList.remove('hidden');
     } else {
-      fetch(`https://n8n.ideanexusventures.com/webhook-test/creator-hub/verify-payment?session_id=${session}`)
+      fetch(`https://n8n.ideanexusventures.com/webhook/creator-hub/verify-payment?session_id=${session}`)
         .then(r => r.json())
         .then(({ paid, email }) => {
            if (!paid) throw new Error('unpaid');
