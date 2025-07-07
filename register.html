@@ -1,0 +1,158 @@
+<!-- ============ register.html ============ -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Creator Hub Registration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-6">
+  <div class="max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-2">Finish Your Registration</h1>
+    <p class="mb-6 text-gray-600">Fill in the details below. Your hub will be available at <code>https://yourdomain.com/<span id="slugPreview" class="text-blue-600">slug</span></code></p>
+
+    <!-- Alert if user landed here without paying -->
+    <div id="payWarning" class="hidden mb-6 p-4 bg-red-50 text-red-700 rounded-lg">Payment not detected. Please complete the $5 purchase first.</div>
+
+    <form id="regForm" class="space-y-6">
+      <!-- Slug -->
+      <div>
+        <label for="slug" class="block font-medium mb-1">Choose your slug</label>
+        <div class="flex items-center space-x-2">
+          <input id="slug" name="slug" type="text" pattern="^[a-z0-9-]{3,30}$" placeholder="yourname" class="flex-1 border rounded-lg p-2" required>
+          <button type="button" id="checkSlug" class="bg-gray-200 hover:bg-gray-300 rounded-lg px-3 py-2 text-sm">Check</button>
+        </div>
+        <p id="slugMsg" class="text-sm mt-1"></p>
+      </div>
+
+      <!-- Contact -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium mb-1" for="calendar">Calendar Link (Cal.com)</label>
+          <input id="calendar" name="calendar" type="url" placeholder="https://cal.com/yourname" class="w-full border rounded-lg p-2">
+        </div>
+        <div>
+          <label class="block font-medium mb-1" for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="you@example.com" class="w-full border rounded-lg p-2" required>
+        </div>
+        <div>
+          <label class="block font-medium mb-1" for="phone">Phone</label>
+          <input id="phone" name="phone" type="tel" placeholder="+1 555‑123‑4567" class="w-full border rounded-lg p-2">
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Stripe payment links -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-medium mb-1" for="text_monthly">Text Support – Monthly</label>
+          <input id="text_monthly" name="text_monthly" type="url" placeholder="https://buy.stripe.com/..." class="w-full border rounded-lg p-2">
+        </div>
+        <div>
+          <label class="block font-medium mb-1" for="text_yearly">Text Support – Yearly</label>
+          <input id="text_yearly" name="text_yearly" type="url" placeholder="https://buy.stripe.com/..." class="w-full border rounded-lg p-2">
+        </div>
+        <div>
+          <label class="block font-medium mb-1" for="video_monthly">Video Support – Monthly</label>
+          <input id="video_monthly" name="video_monthly" type="url" placeholder="https://buy.stripe.com/..." class="w-full border rounded-lg p-2">
+        </div>
+        <div>
+          <label class="block font-medium mb-1" for="video_yearly">Video Support – Yearly</label>
+          <input id="video_yearly" name="video_yearly" type="url" placeholder="https://buy.stripe.com/..." class="w-full border rounded-lg p-2">
+        </div>
+      </div>
+
+      <hr>
+
+      <!-- Up to 10 extra content links -->
+      <div>
+        <label class="block font-medium mb-2">Additional Content Links (max 10)</label>
+        <div id="contentLinks" class="space-y-2"></div>
+        <button type="button" id="addLink" class="mt-2 bg-gray-200 hover:bg-gray-300 rounded-lg px-3 py-2 text-sm">+ Add Link</button>
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg">Save Listing</button>
+    </form>
+
+    <div id="successMsg" class="hidden mt-6 p-4 bg-green-50 text-green-800 rounded-lg">Success! Your hub is live. 🎉</div>
+  </div>
+
+  <script>
+    // === Config – swap with real n8n endpoints ===
+    const SLUG_CHECK_URL = 'https://example.n8n.cloud/webhook/slug-check';
+    const SUBMIT_URL     = 'https://example.n8n.cloud/webhook/save-listing';
+
+    // === Payment verification (very lightweight) ===
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get('paid');
+    if (!paid) document.getElementById('payWarning').classList.remove('hidden');
+
+    // === Slug availability ===
+    const slugInput = document.getElementById('slug');
+    const slugMsg = document.getElementById('slugMsg');
+
+    function checkSlugAvailability() {
+      const slug = slugInput.value.trim().toLowerCase();
+      if (!slug) return;
+      slugMsg.textContent = 'Checking…'; slugMsg.className = 'text-sm text-gray-500';
+      fetch(`${SLUG_CHECK_URL}?slug=${encodeURIComponent(slug)}`)
+        .then(r => r.json())
+        .then(({ available }) => {
+          if (available) {
+            slugMsg.textContent = '✅ Available';
+            slugMsg.className = 'text-sm text-green-600';
+          } else {
+            slugMsg.textContent = '❌ Taken';
+            slugMsg.className = 'text-sm text-red-600';
+          }
+          document.getElementById('slugPreview').textContent = slug || 'slug';
+        })
+        .catch(() => {
+          slugMsg.textContent = 'Error checking slug';
+          slugMsg.className = 'text-sm text-red-600';
+        });
+    }
+
+    document.getElementById('checkSlug').addEventListener('click', checkSlugAvailability);
+    slugInput.addEventListener('blur', checkSlugAvailability);
+
+    // === Dynamic content links ===
+    const contentLinksDiv = document.getElementById('contentLinks');
+    document.getElementById('addLink').addEventListener('click', () => {
+      const count = contentLinksDiv.children.length;
+      if (count >= 10) return alert('Max 10 links');
+      const input = document.createElement('input');
+      input.type = 'url';
+      input.name = `content_link_${count+1}`;
+      input.placeholder = 'https://mycontent.com/…';
+      input.className = 'w-full border rounded-lg p-2';
+      contentLinksDiv.appendChild(input);
+    });
+
+    // === Form submission ===
+    document.getElementById('regForm').addEventListener('submit', e => {
+      e.preventDefault();
+      // Basic guard
+      if (slugMsg.textContent.startsWith('❌')) return alert('Please choose an available slug.');
+
+      const data = Object.fromEntries(new FormData(e.target));
+      fetch(SUBMIT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(r => {
+        if (!r.ok) throw new Error('Network');
+        return r.json();
+      })
+      .then(() => {
+        document.getElementById('successMsg').classList.remove('hidden');
+        e.target.reset();
+        contentLinksDiv.innerHTML = '';
+      })
+      .catch(() => alert('Something went wrong. Try again.'));
+    });
+  </script>
+</body>
+</html>
