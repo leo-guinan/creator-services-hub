@@ -83,11 +83,22 @@
     const SLUG_CHECK_URL = 'https://n8n.ideanexusventures.com/webhook-test/1bb1f154-6956-4c7d-a801-087e340f6560';
     const SUBMIT_URL     = 'https://n8n.ideanexusventures.com/webhook-test/53572492-ed64-4486-b845-386b622cd5c3';
 
-    // === Payment verification (very lightweight) ===
-    const params = new URLSearchParams(window.location.search);
-    const paid = params.get('paid');
-    if (!paid) document.getElementById('payWarning').classList.remove('hidden');
-
+    const params   = new URLSearchParams(window.location.search);
+    const session  = params.get('session_id');
+    const payWarn  = document.getElementById('payWarning');
+    
+    if (!session) {
+      payWarn.textContent = 'No payment token found – please pay $5 first.';
+      payWarn.classList.remove('hidden');
+    } else {
+      fetch(`https://n8n.ideanexusventures.com/webhook-test/creator-hub/verify-payment?session_id=${session}`)
+        .then(r => r.json())
+        .then(({ paid, email }) => {
+           if (!paid) throw new Error('unpaid');
+           if (email) document.getElementById('email').value = email;
+        })
+        .catch(() => payWarn.classList.remove('hidden'));
+    }
     // === Slug availability ===
     const slugInput = document.getElementById('slug');
     const slugMsg = document.getElementById('slugMsg');
